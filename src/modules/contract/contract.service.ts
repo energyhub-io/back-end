@@ -1,13 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ethers } from 'ethers';
 import { ShellyService } from '../shelly/services/shelly.service';
 import { ConfigService } from '@nestjs/config';
-
+import { defaultAbi } from '../../../contract/abi';
 @Injectable()
-export class ContractService {
+export class ContractService implements OnModuleInit, OnModuleDestroy {
     private contract: ethers.Contract;
     private provider: ethers.Provider;
     private logger = new Logger('ContractService');
+    private pollInterval: NodeJS.Timeout;
+    private lastKnownBalance: bigint = BigInt(0);
 
     constructor(
         private shellyService: ShellyService,
@@ -17,59 +19,65 @@ export class ContractService {
 
         this.contract = new ethers.Contract(
             '0x60a863a9286fdd5a070865d620930084b04c8afb',
-            [
-                "function getLastTransaction(address _user) external view returns (uint256 amount, uint256 timestamp)",
-                "event DepositMade(address indexed user, uint256 amount, uint256 timestamp)"
-            ],
+            defaultAbi,
             this.provider
         );
-
-        this.listenToEvents();
     }
 
-    private listenToEvents() {
-        this.contract.on("DepositMade", async (user, amount, timestamp) => {
-            this.logger.log(`New deposit from ${user}: ${amount} at ${timestamp}`);
+    async onModuleInit() {
+        // Start polling when service initializes
+        this.startPolling();
+    }
 
+    onModuleDestroy() {
+        // Clean up polling when service destroys
+        if (this.pollInterval) {
+            clearInterval(this.pollInterval);
+        }
+    }
+
+    private startPolling() {
+        // Poll every 10 seconds
+        this.pollInterval = setInterval(async () => {
             try {
-                // Get the device ID from your mapping (you'll need to implement this)
-                const deviceId = await this.getDeviceIdForUser(user);
+                const balance = await this.contract.getContractTokenBalance();
+                this.logger.debug(`Current contract balance: ${balance}`);
 
-                // Turn on the device
-                await this.shellyService.setPlugState(deviceId, true);
+                // If balance changed, update device state
+                if (balance !== this.lastKnownBalance) {
+                    this.lastKnownBalance = balance;
 
-                // Schedule turn off based on amount
-                // You'll need to implement your scheduling logic
-                const duration = this.calculateDuration(amount);
-                setTimeout(async () => {
-                    await this.shellyService.setPlugState(deviceId, false);
-                }, duration * 1000);
-
+                    // If balance > 0, turn on device
+                    const shouldBeOn = balance > 0;
+                    await this.updateDeviceState(shouldBeOn);
+                }
             } catch (error) {
-                this.logger.error('Failed to handle deposit', error);
+                this.logger.error('Failed to poll contract balance', error);
             }
-        });
+        }, 10000); // 10 seconds
     }
 
-    public calculateDuration(amount: bigint): number {
-        // Implement your duration calculation based on amount
-        // Return duration in seconds
-        return Number(amount) / 1e6 * 3600; // Example: 1 USDC = 1 hour
-    }
-
-    private async getDeviceIdForUser(userAddress: string): Promise<string> {
-        // Implement your mapping logic
-        // This could be stored in your database
-        return "device-id";
-    }
-
-    async getLastTransaction(address: string): Promise<[bigint, bigint]> {
+    private async updateDeviceState(shouldBeOn: boolean) {
         try {
-            const [amount, timestamp] = await this.contract.getLastTransaction(address);
-            return [amount, timestamp];
+            // Get all devices and update their states
+            const devices = await this.shellyService.getDevices();
+            for (const device of devices) {
+                await this.shellyService.setPlugState(device.id, shouldBeOn);
+                this.logger.log(`Device ${device.id} state set to ${shouldBeOn}`);
+            }
         } catch (error) {
-            this.logger.error(`Failed to get transaction for ${address}`, error);
-            throw error;
+            this.logger.error('Failed to update device state', error);
+        }
+    }
+
+    // Public method to force check balance
+    async checkBalance(address?: string): Promise<string> {
+        if (address) {
+            const balance = await this.contract.getContractTokenBalance(address);
+            return balance.toString();
+        } else {
+            const balance = await this.contract.getContractTokenBalance();
+            return balance.toString();
         }
     }
 } 

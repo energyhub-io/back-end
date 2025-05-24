@@ -65,15 +65,33 @@ export class ShellyController {
     @ApiResponse({ status: 200 })
     async getContractStatus(@Param('address') address: string) {
         try {
-            const [amount, timestamp] = await this.contractService.getLastTransaction(address);
+            const balance = await this.contractService.checkBalance();
+            console.log(balance)
             return {
                 address,
-                amount: amount.toString(),
-                timestamp: Number(timestamp),
-                isActive: Number(timestamp) + this.contractService.calculateDuration(amount) > Date.now() / 1000
+                amount: balance.toString(),
+                isActive: Number(balance) > 0
             };
         } catch (error) {
             throw new HttpException('Failed to get contract status', HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @Get('contract/balance')
+    @ApiOperation({ summary: 'Get current contract balance' })
+    @ApiResponse({ status: 200 })
+    async getContractBalance() {
+        try {
+            const balance = await this.contractService.checkBalance();
+            const isActive = BigInt(balance) > 0;
+
+            return {
+                balance,
+                isActive,
+                timestamp: Date.now()
+            };
+        } catch (error) {
+            throw new HttpException('Failed to get contract balance', HttpStatus.BAD_REQUEST);
         }
     }
 } 
