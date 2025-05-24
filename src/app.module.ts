@@ -5,7 +5,6 @@ import { ShellyController } from './modules/shelly/controllers/shelly.controller
 import { ShellyService } from './modules/shelly/services/shelly.service';
 import { ShellyModule } from './modules/shelly/shelly.module';
 import { supabaseConfig } from './config/supabase.config';
-
 @Module({
   imports: [
     ConfigModule.forRoot({

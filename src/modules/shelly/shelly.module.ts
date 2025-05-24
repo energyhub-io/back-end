@@ -5,6 +5,7 @@ import { ShellyController } from './controllers/shelly.controller';
 import { ShellyService } from './services/shelly.service';
 import { SupabaseService } from './services/supabase.service';
 import { supabaseConfig } from '../../config/supabase.config';
+import { ContractService } from '../contract/contract.service';
 
 @Module({
     imports: [
@@ -12,7 +13,7 @@ import { supabaseConfig } from '../../config/supabase.config';
         ConfigModule.forFeature(supabaseConfig),
     ],
     controllers: [ShellyController],
-    providers: [ShellyService, SupabaseService],
+    providers: [ShellyService, SupabaseService, ContractService],
     exports: [ShellyService],
 })
 export class ShellyModule { } 

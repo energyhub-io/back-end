@@ -1,12 +1,16 @@
-import { Controller, Get, Post, Body, Param, Put, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, HttpException, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ShellyService } from '../services/shelly.service';
 import { ShellyDeviceDto, SwitchStateDto, SwitchStatusDto } from '../dto/shelly.dto';
+import { ContractService } from '../../contract/contract.service';
 
 @ApiTags('shelly')
 @Controller('shelly')
 export class ShellyController {
-    constructor(private readonly shellyService: ShellyService) { }
+    constructor(
+        private readonly shellyService: ShellyService,
+        private readonly contractService: ContractService
+    ) { }
 
     @Post('devices')
     @ApiOperation({ summary: 'Add a new Shelly device' })
@@ -54,5 +58,22 @@ export class ShellyController {
     @ApiResponse({ status: 200 })
     async deleteDevice(@Param('id') id: string) {
         return this.shellyService.deleteDevice(id);
+    }
+
+    @Get('contract/status/:address')
+    @ApiOperation({ summary: 'Get contract status for address' })
+    @ApiResponse({ status: 200 })
+    async getContractStatus(@Param('address') address: string) {
+        try {
+            const [amount, timestamp] = await this.contractService.getLastTransaction(address);
+            return {
+                address,
+                amount: amount.toString(),
+                timestamp: Number(timestamp),
+                isActive: Number(timestamp) + this.contractService.calculateDuration(amount) > Date.now() / 1000
+            };
+        } catch (error) {
+            throw new HttpException('Failed to get contract status', HttpStatus.BAD_REQUEST);
+        }
     }
 } 
