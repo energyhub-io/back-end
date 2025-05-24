@@ -6,6 +6,7 @@ interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
     function allowance(address owner, address spender) external view returns (uint256);
     function balanceOf(address account) external view returns (uint256);
+    function approve(address spender, uint256 amount) external returns (bool);
 }
 
 contract SmartPlugCharger {
@@ -40,6 +41,7 @@ contract SmartPlugCharger {
      */
     function depositTokens(uint256 _amount) external {
         require(_amount > 0, "SmartPlugCharger: Deposit amount must be greater than zero");
+        stablecoin.approve(address(this), _amount);
 
         // Check if the user has approved enough tokens for this contract to spend.
         uint256 allowed = stablecoin.allowance(msg.sender, address(this));
