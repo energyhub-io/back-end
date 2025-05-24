@@ -14,12 +14,26 @@ export class ShellyService {
 
     async getStatus(deviceId: string): Promise<ISwitchStatus> {
         const device = await this.findDevice(deviceId);
-        return this.makeRequest(device.address, 'Switch.GetStatus');
+        try {
+            const data = await this.makeRequest(device.address, 'Switch.GetStatus', { id: 0 });
+            return {
+                output: data.output,
+                power: data.apower,
+                overpower: data.overpower,
+                temperature: data.temperature.tC,
+            };
+        } catch (error) {
+            throw new HttpException('Failed to get device status', HttpStatus.BAD_GATEWAY);
+        }
     }
 
     async setPlugState(deviceId: string, state: boolean): Promise<void> {
         const device = await this.findDevice(deviceId);
-        await this.makeRequest(device.address, 'Switch.Set', { on: state });
+        try {
+            await this.makeRequest(device.address, 'Switch.Set', { id: 0, on: state });
+        } catch (error) {
+            throw new HttpException('Failed to set device state', HttpStatus.BAD_GATEWAY);
+        }
     }
 
     async addDevice(device: ShellyDeviceDto): Promise<IShellyDevice> {
@@ -42,15 +56,20 @@ export class ShellyService {
         }
     }
 
-    private async makeRequest(address: string, method: string, params: any = { id: 0 }): Promise<any> {
+    private async makeRequest(address: string, method: string, params: any = {}): Promise<any> {
         try {
             const { data } = await firstValueFrom(
                 this.httpService.post(`http://${address}/rpc`, {
-                    id: 0,
+                    id: 1,
                     method,
                     params,
                 })
             );
+
+            if (data.error) {
+                throw new Error(data.error.message);
+            }
+
             return data.result;
         } catch (error) {
             throw new HttpException(
