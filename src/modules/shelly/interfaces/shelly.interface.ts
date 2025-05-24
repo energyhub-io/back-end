@@ -1,5 +1,5 @@
 export interface IShellyDevice {
-    id: string;
+    id?: string;
     name: string;
     address: string;
     type: 'PLUG' | 'OTHER';

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ShellyService } from '../services/shelly.service';
 import { ShellyDeviceDto, SwitchStateDto, SwitchStatusDto } from '../dto/shelly.dto';
@@ -37,5 +37,12 @@ export class ShellyController {
         @Body() { state }: SwitchStateDto,
     ) {
         return this.shellyService.setPlugState(id, state);
+    }
+
+    @Delete('devices/:id')
+    @ApiOperation({ summary: 'Delete a device' })
+    @ApiResponse({ status: 200 })
+    async deleteDevice(@Param('id') id: string) {
+        return this.shellyService.deleteDevice(id);
     }
 } 

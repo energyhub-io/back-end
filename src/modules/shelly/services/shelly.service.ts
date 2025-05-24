@@ -3,39 +3,43 @@ import { HttpService } from '@nestjs/axios';
 import { IShellyDevice, ISwitchStatus } from '../interfaces/shelly.interface';
 import { ShellyDeviceDto } from '../dto/shelly.dto';
 import { firstValueFrom } from 'rxjs';
+import { SupabaseService } from './supabase.service';
 
 @Injectable()
 export class ShellyService {
-    private devices: IShellyDevice[] = [];
-
-    constructor(private readonly httpService: HttpService) { }
+    constructor(
+        private readonly httpService: HttpService,
+        private readonly supabaseService: SupabaseService,
+    ) { }
 
     async getStatus(deviceId: string): Promise<ISwitchStatus> {
-        const device = this.findDevice(deviceId);
+        const device = await this.findDevice(deviceId);
         return this.makeRequest(device.address, 'Switch.GetStatus');
     }
 
     async setPlugState(deviceId: string, state: boolean): Promise<void> {
-        const device = this.findDevice(deviceId);
+        const device = await this.findDevice(deviceId);
         await this.makeRequest(device.address, 'Switch.Set', { on: state });
     }
 
-    addDevice(device: ShellyDeviceDto): IShellyDevice {
-        const newDevice = { ...device };
-        this.devices.push(newDevice);
-        return newDevice;
+    async addDevice(device: ShellyDeviceDto): Promise<IShellyDevice> {
+        return this.supabaseService.addDevice(device);
     }
 
-    getDevices(): IShellyDevice[] {
-        return this.devices;
+    async getDevices(): Promise<IShellyDevice[]> {
+        return this.supabaseService.getDevices();
     }
 
-    private findDevice(id: string): IShellyDevice {
-        const device = this.devices.find(d => d.id === id);
-        if (!device) {
+    async deleteDevice(id: string): Promise<void> {
+        return this.supabaseService.deleteDevice(id);
+    }
+
+    private async findDevice(id: string): Promise<IShellyDevice> {
+        try {
+            return await this.supabaseService.getDevice(id);
+        } catch (error) {
             throw new HttpException('Device not found', HttpStatus.NOT_FOUND);
         }
-        return device;
     }
 
     private async makeRequest(address: string, method: string, params: any = { id: 0 }): Promise<any> {
@@ -55,4 +59,4 @@ export class ShellyService {
             );
         }
     }
-} 
+}

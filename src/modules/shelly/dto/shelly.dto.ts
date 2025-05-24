@@ -1,8 +1,8 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ShellyDeviceDto {
-    @ApiProperty()
-    id: string;
+    @ApiPropertyOptional()
+    id?: string;
 
     @ApiProperty()
     name: string;
