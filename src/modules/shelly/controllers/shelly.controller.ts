@@ -39,6 +39,16 @@ export class ShellyController {
         return this.shellyService.setPlugState(id, state);
     }
 
+    @Put('devices/:id')
+    @ApiOperation({ summary: 'Set device state' })
+    @ApiResponse({ status: 200 })
+    updatePlugState(
+        @Param('id') id: string,
+        @Body() device: ShellyDeviceDto,
+    ) {
+        return this.shellyService.updatePlug(id, device);
+    }
+
     @Delete('devices/:id')
     @ApiOperation({ summary: 'Delete a device' })
     @ApiResponse({ status: 200 })

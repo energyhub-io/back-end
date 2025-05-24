@@ -35,9 +35,12 @@ export class ShellyService {
             throw new HttpException('Failed to set device state', HttpStatus.BAD_GATEWAY);
         }
     }
+    async updatePlug(id: string, device: ShellyDeviceDto): Promise<IShellyDevice> {
+        return this.supabaseService.updateDevice(id, device);
+    }
 
     async addDevice(device: ShellyDeviceDto): Promise<IShellyDevice> {
-        return this.supabaseService.addDevice(device);
+        return this.supabaseService.addDevice(device as any);
     }
 
     async getDevices(): Promise<IShellyDevice[]> {
